@@ -301,6 +301,7 @@ textarea { resize: vertical; }
 
 /* ── Usuario en la barra lateral ── */
 .sidebar { display: flex; flex-direction: column; }
+.sidebar__version { margin: -1.25rem 0 1.25rem; padding: 0 0.5rem; font-size: 0.8rem; color: var(--texto-suave); }
 .sidebar__usuario { margin-top: auto; padding-top: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
 .sidebar__nombre { padding: 0 0.5rem; font-weight: 600; overflow-wrap: anywhere; }
 .sidebar__salir { justify-content: center; }
@@ -326,6 +327,7 @@ textarea { resize: vertical; }
   .sidebar { flex-direction: row; flex-wrap: wrap; }
   .sidebar__usuario { margin: 0 0 0 auto; padding: 0; flex-direction: row; align-items: center; }
   .sidebar__nombre { display: none; }
+  .sidebar__version { display: none; }
   .sidebar__salir { padding: 0.4rem 0.65rem; }
   .contenido { padding: 1.25rem 1rem; }
   .pagina__titulo { font-size: 1.4rem; }

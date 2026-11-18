@@ -7,6 +7,7 @@ export default function Sidebar({ activa, onCambiar, usuario, onCerrarSesion }) 
   return (
     <aside className="sidebar">
       <p className="sidebar__marca">UniPanel</p>
+      <p className="sidebar__version">Versión 1.1</p>
       <nav aria-label="Secciones">
         <ul className="sidebar__lista">
           {SECCIONES.map((s) => (
