@@ -206,7 +206,7 @@ describe('App con autenticación', () => {
       if (url === '/api/notas/cursos/10/resumen') {
         return respuestaJson({
           curso_id: 10, nota_objetivo: 11, nota_minima_aprobatoria: 11, suma_pesos: 0, peso_faltante: 100,
-          pesos_completos: false, evaluaciones_pendientes: 0, evaluacion_pendiente: null, aporte_acumulado: 0,
+          pesos_completos: false, evaluaciones_pendientes: 0, suma_pesos_pendientes: 0, evaluaciones_pendientes_detalle: [], aporte_acumulado: 0,
           es_promedio_final: false, promedio_final: null, nota_necesaria: null, estado_objetivo: 'sin_calculo',
           mensaje_objetivo: 'Todavía no se puede calcular cuánto necesitas para tu objetivo de 11.',
           estado_aprobacion: null, mensaje_aprobacion: null,

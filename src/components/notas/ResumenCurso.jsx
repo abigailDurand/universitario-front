@@ -89,8 +89,13 @@ export default function ResumenCurso({ resumen, onGuardarObjetivo }) {
           <div className="tarjeta-dato">
             <p className="tarjeta-dato__etiqueta">Nota necesaria</p>
             <p className="tarjeta-dato__valor">{resumen.nota_necesaria}</p>
-            {resumen.evaluacion_pendiente && (
-              <p className="tarjeta-dato__nota">en {resumen.evaluacion_pendiente.nombre}</p>
+            {resumen.evaluaciones_pendientes_detalle.length === 1 && (
+              <p className="tarjeta-dato__nota">en {resumen.evaluaciones_pendientes_detalle[0].nombre}</p>
+            )}
+            {resumen.evaluaciones_pendientes_detalle.length > 1 && (
+              <p className="tarjeta-dato__nota">
+                en cada una de las {resumen.evaluaciones_pendientes_detalle.length} evaluaciones pendientes
+              </p>
             )}
           </div>
         )}

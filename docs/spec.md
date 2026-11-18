@@ -53,7 +53,12 @@ dentro de su contenedor.
 - Límite de longitud del nombre: el de la API de notas (hoy **no tiene**; no se inventa uno).
 - Resumen (tal como lo da `GET /resumen`, sin recalcular):
   - `es_promedio_final` false → *Aporte acumulado* + *Todavía no es el promedio final.*; true → *Promedio final*.
-  - *Nota necesaria* solo si no es `null` (0 se muestra como 0).
+  - *Nota necesaria* solo si no es `null` (0 se muestra como 0): es la nota común que la API calcula
+    para **todas** las pendientes (`evaluaciones_pendientes_detalle`). Con una pendiente se indica
+    *en {nombre}*; con varias, *en cada una de las N evaluaciones pendientes*.
+  - En la tabla, cada evaluación con `nota` `null` muestra *Pendiente* y, si la API la da,
+    *Sugerida: {nota_sugerida}* con estilo distinto (borde discontinuo). La sugerencia no se
+    guarda, no se envía como nota y no se recalcula en el front.
   - `mensaje_objetivo` por tono: `alcanzado` menta, `alcanzable` lavanda,
     `no_alcanzado`/`no_alcanzable` durazno, `sin_calculo` neutro.
   - `mensaje_aprobacion` solo si no es `null` (aprobación separada del objetivo). `avisos[].mensaje`.

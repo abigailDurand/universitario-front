@@ -73,6 +73,10 @@ export default function NotasPage() {
 
   const cerrar = () => setDialogo(null)
   const curso = cursos.datos.find((c) => c.id === seleccionado) ?? null
+  // Nota sugerida por evaluación pendiente, tal como la entrega GET /resumen (no se recalcula).
+  const sugeridas = new Map(
+    (detalle.resumen?.evaluaciones_pendientes_detalle ?? []).map((p) => [p.id, p.nota_sugerida]),
+  )
 
   // ── Acciones (cada una actualiza los datos afectados y el resumen) ──
   async function crearCurso(cuerpo) {
@@ -212,7 +216,17 @@ export default function NotasPage() {
                             <tr key={ev.id}>
                               <td>{ev.nombre}</td>
                               <td>{ev.peso_porcentaje} %</td>
-                              <td>{ev.nota === null ? <span className="etiqueta etiqueta--neutro">Pendiente</span> : ev.nota}</td>
+                              <td>
+                                {ev.nota === null ? (
+                                  <span className="etiquetas">
+                                    <span className="etiqueta etiqueta--neutro">Pendiente</span>
+                                    {sugeridas.get(ev.id) != null && (
+                                      // Sugerencia de la API (no es una nota real ni se guarda).
+                                      <span className="etiqueta etiqueta--sugerida">Sugerida: {sugeridas.get(ev.id)}</span>
+                                    )}
+                                  </span>
+                                ) : ev.nota}
+                              </td>
                               <td>
                                 <div className="acciones">
                                   <button type="button" className="boton-icono" aria-label={`Editar ${ev.nombre}`} title="Editar"

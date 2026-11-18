@@ -14,7 +14,8 @@ function resumen(cursoId, extra = {}) {
     peso_faltante: 0,
     pesos_completos: true,
     evaluaciones_pendientes: 1,
-    evaluacion_pendiente: { id: 3, nombre: 'Final', peso_porcentaje: 40 },
+    suma_pesos_pendientes: 40,
+    evaluaciones_pendientes_detalle: [{ id: 3, nombre: 'Final', peso_porcentaje: 40, nota_sugerida: 9.5 }],
     aporte_acumulado: 7.2,
     es_promedio_final: false,
     promedio_final: null,
@@ -64,6 +65,62 @@ describe('Mis notas', () => {
     const filas = screen.getAllByRole('row')
     expect(within(filas[2]).getByText('0')).toBeInTheDocument() // nota 0 se muestra como 0
     expect(within(filas[3]).getByText('Pendiente')).toBeInTheDocument()
+    expect(within(filas[3]).getByText('Sugerida: 9.5')).toBeInTheDocument()
+    expect(within(filas[2]).queryByText(/Sugerida/)).not.toBeInTheDocument()
+    expect(screen.getByText('en Final')).toBeInTheDocument()
+  })
+
+  it('varias pendientes: la misma nota sugerida en cada una, sin guardarla', async () => {
+    const evaluaciones = [
+      { id: 1, curso_id: 1, nombre: 'Prácticas', peso_porcentaje: 40, nota: 14 },
+      { id: 5, curso_id: 1, nombre: 'Parcial', peso_porcentaje: 30, nota: null },
+      { id: 6, curso_id: 1, nombre: 'Final', peso_porcentaje: 30, nota: null },
+    ]
+    const { llamadas } = simularFetch({
+      'GET /api/notas/cursos': () => respuestaJson([{ id: 1, nombre: 'Cálculo I', nota_objetivo: 11 }]),
+      'GET /api/notas/cursos/1/evaluaciones': () => respuestaJson(evaluaciones),
+      'GET /api/notas/cursos/1/resumen': () => respuestaJson(resumen(1, {
+        evaluaciones_pendientes: 2,
+        suma_pesos_pendientes: 60,
+        evaluaciones_pendientes_detalle: [
+          { id: 5, nombre: 'Parcial', peso_porcentaje: 30, nota_sugerida: 9 },
+          { id: 6, nombre: 'Final', peso_porcentaje: 30, nota_sugerida: 9 },
+        ],
+        aporte_acumulado: 5.6,
+        nota_necesaria: 9,
+        mensaje_objetivo: 'Necesitas 9 en cada una de tus 2 evaluaciones pendientes para llegar a tu objetivo de 11.',
+        avisos: [{ codigo: 'SUGERENCIA_COMUN', mensaje: 'La sugerencia supone obtener la misma nota en todas las evaluaciones pendientes. Puedes compensar unas con otras.' }],
+      })),
+    })
+    render(<NotasPage />)
+
+    expect(await screen.findByText('en cada una de las 2 evaluaciones pendientes')).toBeInTheDocument()
+    const filas = screen.getAllByRole('row')
+    expect(within(filas[2]).getByText('Sugerida: 9')).toBeInTheDocument()
+    expect(within(filas[3]).getByText('Sugerida: 9')).toBeInTheDocument()
+    expect(within(filas[1]).queryByText(/Sugerida/)).not.toBeInTheDocument()
+    expect(screen.getByText(/Puedes compensar unas con otras/)).toBeInTheDocument()
+    // Solo consultas: la sugerencia nunca se envía como nota.
+    expect(llamadas.every((l) => l.method === 'GET')).toBe(true)
+  })
+
+  it('pesos incompletos: pendientes sin sugerencia', async () => {
+    simularFetch({
+      'GET /api/notas/cursos': () => respuestaJson([{ id: 1, nombre: 'Cálculo I', nota_objetivo: 11 }]),
+      'GET /api/notas/cursos/1/evaluaciones': () => respuestaJson([
+        { id: 3, curso_id: 1, nombre: 'Final', peso_porcentaje: 40, nota: null },
+      ]),
+      'GET /api/notas/cursos/1/resumen': () => respuestaJson(resumen(1, {
+        suma_pesos: 40, peso_faltante: 60, pesos_completos: false,
+        evaluaciones_pendientes_detalle: [{ id: 3, nombre: 'Final', peso_porcentaje: 40, nota_sugerida: null }],
+        aporte_acumulado: 0, nota_necesaria: null, estado_objetivo: 'sin_calculo',
+        mensaje_objetivo: 'Todavía no se puede calcular cuánto necesitas para tu objetivo de 11.',
+      })),
+    })
+    render(<NotasPage />)
+    expect(await screen.findByText('Pendiente')).toBeInTheDocument()
+    expect(screen.queryByText(/Sugerida/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Nota necesaria')).not.toBeInTheDocument()
   })
 
   it('promedio final, nota necesaria 0 y aprobación separada del objetivo', async () => {
@@ -75,7 +132,8 @@ describe('Mis notas', () => {
         promedio_final: 15,
         aporte_acumulado: 15,
         evaluaciones_pendientes: 0,
-        evaluacion_pendiente: null,
+        suma_pesos_pendientes: 0,
+        evaluaciones_pendientes_detalle: [],
         nota_necesaria: 0,
         estado_objetivo: 'alcanzado',
         mensaje_objetivo: 'Ya alcanzaste tu objetivo de 11.',

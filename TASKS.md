@@ -38,6 +38,8 @@ Las API ya implementaron la autenticación (notas 13–16, pendientes 9–12; co
 
 ## Hechas
 
+- [x] 19. Resumen con nota sugerida común para una o varias pendientes (`evaluaciones_pendientes_detalle` de notas-service `f01b92c`): tarjeta y *Sugerida: X* en cada fila pendiente.
+
 - [x] 1. Estructura inicial: Vite + React, navegación, clientes de `src/api/`, proxy de Vite,
       Nginx con ruta completa, Dockerfile, docs y `init.sh`.
 - [x] 2. Pruebas con Vitest + Testing Library (jsdom) en `init.sh`: http, filtros, números, fechas,

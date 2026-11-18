@@ -201,6 +201,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .etiqueta--completado { background: var(--menta); }
 .etiqueta--vencido { background: var(--error-fondo); color: var(--error); border: 1px solid #f3c3bd; }
 .etiqueta--neutro { background: var(--fondo); border: 1px solid var(--borde); color: var(--texto-suave); }
+/* Nota sugerida por la API: borde discontinuo para no confundirla con una nota registrada. */
+.etiqueta--sugerida { background: var(--lavanda); border: 1px dashed var(--primario); }
 
 /* ── Filtros ── */
 .filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem; margin-bottom: 1rem; }
