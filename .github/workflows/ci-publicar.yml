@@ -63,4 +63,5 @@ jobs:
       - name: Resumen
         env:
           IMAGEN_PUBLICADA: ${{ steps.datos.outputs.imagen }}
-        run: echo "Imagen publicada: \`${IMAGEN_PUBLICADA}\`" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          echo "Imagen publicada: \`${IMAGEN_PUBLICADA}\`" >> "$GITHUB_STEP_SUMMARY"
