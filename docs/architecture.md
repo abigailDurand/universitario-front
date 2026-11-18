@@ -1,0 +1,54 @@
+# Arquitectura — `uni-panel`
+
+```
+Navegador ──► uni-panel (Nginx sin root, :8080)
+               ├── /                     → React compilado (SPA, fallback a index.html)
+               ├── /api/notas[/...]      → uni-notas-api:5000      (ruta completa)
+               ├── /api/pendientes[/...] → uni-pendientes-api:3000 (ruta completa)
+               └── /api/* (otras)        → 404
+uni-notas-api      ──► BD de notas (PostgreSQL)
+uni-pendientes-api ──► BD de pendientes (PostgreSQL)
+```
+
+- El navegador **solo** habla con Nginx (mismo origen). Nunca llama directo a las API.
+- Nginx reenvía la ruta **completa**, sin quitar el prefijo (`proxy_pass` sin URI final).
+- Los `/health` de las API **no** se publican (en Nginx, `/health` cae en la SPA).
+- Las API no se llaman entre sí y cada una es la única que accede a su BD.
+
+## Entornos
+
+| Entorno | Quién reenvía `/api/...` | Destinos |
+|---|---|---|
+| `npm run dev` | Proxy de Vite (`vite.config.js`) | `NOTAS_API_URL` (por defecto `http://127.0.0.1:5000`) y `PENDIENTES_API_URL` (por defecto `http://127.0.0.1:3000`) |
+| Contenedor / Compose / Kubernetes | Nginx (`nginx/default.conf`) | `uni-notas-api:5000` y `uni-pendientes-api:3000` (nombres DNS) |
+
+Nginx resuelve los nombres al arrancar: si alguno no existe en la red, no inicia.
+
+## Integración local (`docker-compose.yml`)
+
+| Servicio | Imagen | Publicado |
+|---|---|---|
+| `uni-panel` | `build: .` | `127.0.0.1:8080` (o `UNI_PANEL_PORT`) |
+| `uni-notas-api` | `build: ../notas-service` | no |
+| `uni-pendientes-api` | `build: ../pendientes-service` | no |
+| `uni-notas-db`, `uni-pendientes-db` | `postgres:17-alpine`, volúmenes `notas-datos` / `pendientes-datos` | no |
+
+Arranque en orden por `healthcheck`: BD (`pg_isready`) → API (`GET /health` dentro del
+contenedor) → `uni-panel`. Contraseñas en `.env` (ignorado); plantilla `.env.example`.
+Las API crean sus tablas al arrancar.
+
+## Código
+
+| Archivo | Papel |
+|---|---|
+| `src/App.jsx` | Alterna *Mis notas* / *Mis pendientes* (sin librería de rutas) |
+| `src/api/http.js` | `fetch` común; `{ "error" }` → `ApiError`; 204 sin JSON; texto genérico |
+| `src/api/notas.js`, `src/api/pendientes.js` | Endpoints de cada contrato |
+| `src/utils/numeros.js` | Lectura de notas/pesos (rango, 2 decimales, vacío → null) |
+| `src/utils/fechas.js` | Hora de Perú: formato, `datetime-local` ↔ ISO `-05:00` |
+| `src/components/` | `Sidebar`, `Modal`, `ConfirmDialog`, `StatusMessage`, `Campo`, `Iconos`, formularios por pantalla |
+| `src/pages/` | `NotasPage.jsx`, `PendientesPage.jsx` |
+| `test/` | Vitest + Testing Library (jsdom) con `fetch` simulado |
+| `nginx/` | `default.conf` (SPA + proxies) y `proxy-comun.inc` (cabeceras) |
+| `Dockerfile` | Build con Node 24 → `nginxinc/nginx-unprivileged:1.27-alpine` (uid 101, :8080) |
+| `k8s/`, `.github/workflows/` | Pendientes de confirmar clúster y registro |

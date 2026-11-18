@@ -1,0 +1,76 @@
+# Integración local de UniPanel: uni-panel + uni-notas-api + uni-pendientes-api + sus BD.
+# Las contraseñas salen de `.env` (ignorado por git; plantilla en `.env.example`).
+# Solo se publica uni-panel en 127.0.0.1:8080. Las API y las BD quedan en la red interna.
+#   docker compose up -d --build
+#   docker compose down        (añade -v para borrar también los datos)
+
+name: unipanel
+
+services:
+  uni-notas-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: notas
+      POSTGRES_USER: notas
+      POSTGRES_PASSWORD: ${NOTAS_DB_PASSWORD:?Define NOTAS_DB_PASSWORD en .env}
+    volumes:
+      - notas-datos:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notas -d notas"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  uni-pendientes-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: pendientes
+      POSTGRES_USER: pendientes
+      POSTGRES_PASSWORD: ${PENDIENTES_DB_PASSWORD:?Define PENDIENTES_DB_PASSWORD en .env}
+    volumes:
+      - pendientes-datos:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pendientes -d pendientes"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  uni-notas-api:
+    build: ../notas-service
+    environment:
+      DATABASE_URL: postgresql+psycopg://notas:${NOTAS_DB_PASSWORD}@uni-notas-db:5432/notas
+    depends_on:
+      uni-notas-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  uni-pendientes-api:
+    build: ../pendientes-service
+    environment:
+      DATABASE_URL: postgresql://pendientes:${PENDIENTES_DB_PASSWORD}@uni-pendientes-db:5432/pendientes
+    depends_on:
+      uni-pendientes-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  uni-panel:
+    build: .
+    ports:
+      - "127.0.0.1:${UNI_PANEL_PORT:-8080}:8080"
+    depends_on:
+      uni-notas-api:
+        condition: service_healthy
+      uni-pendientes-api:
+        condition: service_healthy
+
+volumes:
+  notas-datos:
+  pendientes-datos:
