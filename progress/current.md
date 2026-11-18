@@ -30,7 +30,19 @@
   - Secrets en el clúster: `notas-db`, `pendientes-db` (generados en la EC2) y
     `ghcr-credenciales` (creado por el usuario).
 
+- Tarea 10: CD automático verificado (18-11-2026) en los tres repos (rama principal `main`):
+  - front `c83e096`… → `uni-panel:sha-ec76a481e8fc`; notas `e356690` → `uni-notas-api:sha-e356690b4fbe`;
+    pendientes `babd58a` → `uni-pendientes-api:sha-babd58abd559`. Cada despliegue cambió solo su
+    servicio, abrió y cerró su regla 22/tcp /32, y los PVC conservaron el UID; los registros
+    marcador sobrevivieron a los tres despliegues (luego se borraron).
+  - Problemas resueltos por el camino: `sub` OIDC inmutable con IDs numéricos en la política de
+    confianza, y política de permisos sin adjuntar al rol.
+
 ## Decisiones a confirmar
+
+- CD: los tags vivos están en el clúster, no en el repo (`newTag` de `kustomization.yaml` solo
+  para el primer despliegue manual). Usuario `despliegue` con kubeconfig de administrador de K3s
+  (demo). El puerto 22 queda abierto solo a la IP del usuario (`IP-del-usuario/32`).
 
 - K3s: Secrets `notas-db`, `pendientes-db` (contraseña hex) y `ghcr-credenciales` creados a
   mano; PVC de 1Gi por BD; requests/limits pequeños para t3.small; initContainer que espera a
@@ -57,6 +69,6 @@
 
 ## Siguiente
 
-- Conectar GitHub Actions al despliegue en K3s (tarea 10). La IP pública cambia al detener/iniciar la EC2 (Elastic IP si se quiere fija).
+- Si cambia la IP de la EC2: actualizar la variable `DEPLOY_HOST`. Al terminar la demo: borrar rol/política/OIDC de IAM y revocar los tokens de GitHub.
 - Decidir las mejoras de reconexión a BD de ambas API (ver `TASKS.md`).
 - Revisar el diseño cuando se compartan las imágenes de referencia.

@@ -9,7 +9,7 @@ Referencia: `docs/spec.md`, `docs/architecture.md` y los SPEC de cada API.
 
 ## En curso
 
-- [ ] 10. CD automático a K3s: `desplegar.yml` + `k8s/desplegar.sh` (verificación en GitHub pendiente).
+- _Ninguna._
 
 ## Mejoras detectadas en otros repos (no se tocan desde aquí; decidir el usuario)
 
@@ -38,6 +38,9 @@ Referencia: `docs/spec.md`, `docs/architecture.md` y los SPEC de cada API.
 - [x] 8. Integración local con Docker Compose (3 servicios + 2 PostgreSQL), probada punta a punta.
 - [x] 9. Manifiestos de K3s en `k8s/` (namespace, 2 PostgreSQL con PVC `local-path`, 2 API,
       panel e Ingress de Traefik; Secrets creados a mano). Probados en K3s v1.32.2 en contenedor.
+- [x] 10. CD automático a K3s por SSH (OIDC de AWS, regla 22/tcp temporal /32, llave exclusiva,
+      known_hosts estricto). Verificado en GitHub: merge a main del front → uni-panel; merge a main
+      de cada API → aviso → solo ese servicio; PVC con el mismo UID y datos conservados.
 - [x] 12. Despliegue manual en K3s en EC2 (t3.small, Ubuntu 26.04): funcionando por la IP pública.
       Ajustes necesarios: PostgreSQL como uid 70 (sin gosu), `startupProbe` en las BD y
       `appArmorProfile: Unconfined` en los pods (AppArmor de Ubuntu 26.04 bloquea señales).
