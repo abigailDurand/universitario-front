@@ -1,7 +1,7 @@
 # CI/CD de uni-panel.
 # - Pull request hacia main: ./init.sh (lint + pruebas + build).
-# - Push a main: pruebas → imagen en GHCR.
-# El despliegue a Kubernetes se añadirá cuando se confirme el clúster.
+# - Push a main (merge): pruebas → imagen en GHCR → despliegue de uni-panel en K3s.
+# Los pull requests solo ejecutan pruebas: nunca publican ni despliegan.
 name: ci-publicar
 
 on:
@@ -37,6 +37,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      tag: ${{ steps.datos.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
       - name: Etiqueta basada en el commit
@@ -65,3 +67,15 @@ jobs:
           IMAGEN_PUBLICADA: ${{ steps.datos.outputs.imagen }}
         run: |
           echo "Imagen publicada: \`${IMAGEN_PUBLICADA}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  desplegar:
+    needs: publicar
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/desplegar.yml
+    with:
+      servicio: uni-panel
+      tag: ${{ needs.publicar.outputs.tag }}
+    secrets: inherit

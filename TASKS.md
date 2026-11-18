@@ -9,12 +9,7 @@ Referencia: `docs/spec.md`, `docs/architecture.md` y los SPEC de cada API.
 
 ## En curso
 
-- _Ninguna._
-
-## En espera (después del despliegue manual)
-
-- [ ] 10. Despliegue en los workflows (parcial: CI, publicación en GHCR y recepción del aviso
-      `servicio-actualizado` hechos; falta aplicar el tag nuevo en K3s).
+- [ ] 10. CD automático a K3s: `desplegar.yml` + `k8s/desplegar.sh` (verificación en GitHub pendiente).
 
 ## Mejoras detectadas en otros repos (no se tocan desde aquí; decidir el usuario)
 

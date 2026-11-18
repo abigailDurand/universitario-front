@@ -1,7 +1,7 @@
-# Recibe el aviso que envían uni-notas-api y uni-pendientes-api tras publicar una imagen
-# (repository_dispatch, event_type: servicio-actualizado).
-# Por ahora valida el aviso y deja constancia en el resumen de la ejecución.
-# El despliegue a Kubernetes se añadirá aquí cuando se confirme el clúster.
+# Recibe el aviso que envían uni-notas-api y uni-pendientes-api tras publicar una imagen en
+# un push a su main (repository_dispatch, event_type: servicio-actualizado) y despliega ese
+# servicio en K3s. Solo pueden enviarlo quienes tengan un token con escritura en este repo
+# (PANEL_DISPATCH_TOKEN de cada API). repository_dispatch siempre corre en main.
 name: servicio-actualizado
 
 on:
@@ -12,10 +12,14 @@ permissions:
   contents: read
 
 jobs:
-  registrar:
+  validar:
     runs-on: ubuntu-latest
+    outputs:
+      servicio: ${{ steps.aviso.outputs.servicio }}
+      tag: ${{ steps.aviso.outputs.tag }}
     steps:
       - name: Validar aviso y escribir resumen
+        id: aviso
         # Los valores del payload se pasan por env (nunca interpolados en el script).
         env:
           SERVICIO: ${{ github.event.client_payload.servicio }}
@@ -27,13 +31,16 @@ jobs:
           case "$SERVICIO" in
             uni-notas-api|uni-pendientes-api) ;;
             "") echo "::error::Falta client_payload.servicio"; errores=1 ;;
-            *) echo "::error::Servicio desconocido en client_payload.servicio (se esperaba uni-notas-api o uni-pendientes-api)"; errores=1 ;;
+            *) echo "::error::Servicio no autorizado en client_payload.servicio (se esperaba uni-notas-api o uni-pendientes-api)"; errores=1 ;;
           esac
-          [ -n "$IMAGEN" ] || { echo "::error::Falta client_payload.imagen"; errores=1; }
-          [ -n "$TAG" ]    || { echo "::error::Falta client_payload.tag"; errores=1; }
-          [ -n "$COMMIT" ] || { echo "::error::Falta client_payload.commit"; errores=1; }
+          [[ "$TAG" =~ ^sha-[0-9a-f]{12}$ ]] || { echo "::error::client_payload.tag debe ser sha-<12 hex>"; errores=1; }
+          [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::client_payload.commit debe ser un SHA completo"; errores=1; }
+          [ "${TAG#sha-}" = "${COMMIT:0:12}" ] || { echo "::error::El tag no corresponde al commit"; errores=1; }
+          [ "$IMAGEN" = "ghcr.io/abigaildurand/${SERVICIO}:${TAG}" ] || { echo "::error::client_payload.imagen no coincide con servicio y tag"; errores=1; }
           [ "$errores" -eq 0 ] || exit 1
 
+          echo "servicio=$SERVICIO" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           {
             echo "## Servicio actualizado"
             echo ""
@@ -43,7 +50,17 @@ jobs:
             printf '| Imagen | `%s` |\n' "$IMAGEN"
             printf '| Tag | `%s` |\n' "$TAG"
             printf '| Commit | `%s` |\n' "$COMMIT"
-            echo ""
-            echo "_Despliegue a Kubernetes pendiente de confirmar el clúster._"
           } >> "$GITHUB_STEP_SUMMARY"
           echo "Aviso recibido: $SERVICIO -> $IMAGEN"
+
+  desplegar:
+    needs: validar
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/desplegar.yml
+    with:
+      servicio: ${{ needs.validar.outputs.servicio }}
+      tag: ${{ needs.validar.outputs.tag }}
+    secrets: inherit

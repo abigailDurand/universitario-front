@@ -1,0 +1,141 @@
+# Despliegue de UN servicio en K3s (EC2) por SSH. Reutilizable: lo llaman
+#   - ci-publicar.yml          (push a main de universitario-front → uni-panel)
+#   - servicio-actualizado.yml (aviso autorizado de una API → uni-notas-api / uni-pendientes-api)
+# Nunca corre desde pull requests.
+#
+# Acceso:
+#   - AWS por OIDC (vars.AWS_ROLE_ARN): el rol solo puede añadir/quitar reglas del SG vars.AWS_SG_ID.
+#   - Se abre 22/tcp SOLO para la IP del runner (/32) y se cierra al final, aunque falle.
+#   - SSH con la llave exclusiva secrets.DEPLOY_SSH_KEY (usuario `despliegue`) y verificación
+#     estricta del servidor con secrets.DEPLOY_KNOWN_HOSTS (alias unipanel-ec2, no depende de la IP).
+name: desplegar
+
+on:
+  workflow_call:
+    inputs:
+      servicio:
+        required: true
+        type: string
+      tag:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  desplegar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Un despliegue a la vez en el clúster; los siguientes esperan (no se cancelan).
+    concurrency:
+      group: despliegue-k3s
+      cancel-in-progress: false
+    env:
+      SERVICIO: ${{ inputs.servicio }}
+      TAG: ${{ inputs.tag }}
+      SG_ID: ${{ vars.AWS_SG_ID }}
+      HOST: ${{ vars.DEPLOY_HOST }}
+      DESCRIPCION_REGLA: gha-despliegue-temporal
+    steps:
+      - name: Comprobar origen y datos
+        run: |
+          case "$GITHUB_EVENT_NAME" in
+            push|repository_dispatch) ;;
+            *) echo "::error::Evento no permitido para desplegar: $GITHUB_EVENT_NAME"; exit 1 ;;
+          esac
+          [ "$GITHUB_REF" = "refs/heads/main" ] || { echo "::error::Solo se despliega desde main ($GITHUB_REF)"; exit 1; }
+          case "$SERVICIO" in uni-notas-api|uni-pendientes-api|uni-panel) ;; *) echo "::error::Servicio no permitido"; exit 1 ;; esac
+          [[ "$TAG" =~ ^sha-[0-9a-f]{12}$ ]] || { echo "::error::Tag inválido"; exit 1; }
+          for v in SG_ID HOST; do [ -n "${!v}" ] || { echo "::error::Falta la variable del repo para $v"; exit 1; }; done
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: gha-despliegue-${{ github.run_id }}
+
+      - name: IP pública del runner
+        id: ip
+        run: |
+          ip=$(curl -fsS --retry 3 https://checkip.amazonaws.com | tr -d '[:space:]')
+          [[ "$ip" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || { echo "::error::IP del runner inválida: $ip"; exit 1; }
+          echo "ip=$ip" >> "$GITHUB_OUTPUT"
+
+      - name: Limpiar reglas temporales antiguas
+        run: |
+          # Por si un despliegue anterior se interrumpió sin poder cerrar su regla.
+          aws ec2 describe-security-group-rules --filters "Name=group-id,Values=$SG_ID" \
+            --query "SecurityGroupRules[?Description=='$DESCRIPCION_REGLA' && !IsEgress].SecurityGroupRuleId" \
+            --output text | tr '\t' '\n' | grep -E '^sgr-' | while read -r regla; do
+              echo "Quitando regla temporal antigua $regla"
+              aws ec2 revoke-security-group-ingress --group-id "$SG_ID" --security-group-rule-ids "$regla" >/dev/null
+            done
+
+      - name: Abrir 22/tcp solo para la IP del runner
+        id: abrir
+        env:
+          IP: ${{ steps.ip.outputs.ip }}
+        run: |
+          aws ec2 authorize-security-group-ingress --group-id "$SG_ID" \
+            --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=${IP}/32,Description=${DESCRIPCION_REGLA}}]" >/dev/null
+          echo "abierta=true" >> "$GITHUB_OUTPUT"
+          echo "Regla temporal: 22/tcp desde ${IP}/32"
+
+      - name: Preparar SSH
+        env:
+          LLAVE: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$LLAVE" > ~/.ssh/despliegue && chmod 600 ~/.ssh/despliegue
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts_despliegue && chmod 600 ~/.ssh/known_hosts_despliegue
+          cat > ~/.ssh/config <<EOF
+          Host unipanel-ec2
+            HostName ${HOST}
+            User despliegue
+            IdentityFile ~/.ssh/despliegue
+            IdentitiesOnly yes
+            UserKnownHostsFile ~/.ssh/known_hosts_despliegue
+            HostKeyAlias unipanel-ec2
+            StrictHostKeyChecking yes
+            BatchMode yes
+            ConnectTimeout 10
+            ServerAliveInterval 15
+          EOF
+          chmod 600 ~/.ssh/config
+          # La regla del SG tarda unos segundos en aplicarse.
+          for i in $(seq 1 12); do ssh unipanel-ec2 true && exit 0; sleep 5; done
+          echo "::error::No se pudo conectar por SSH a la EC2"; exit 1
+
+      - name: Desplegar y verificar rollout
+        run: |
+          DIR="despliegues/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          ssh unipanel-ec2 "rm -rf ~/$DIR && mkdir -p ~/$DIR"
+          scp -q -r k8s "unipanel-ec2:$DIR/k8s"
+          ssh unipanel-ec2 "bash ~/$DIR/k8s/desplegar.sh '$SERVICIO' '$TAG' ~/$DIR/k8s; e=\$?; rm -rf ~/$DIR; exit \$e"
+          {
+            echo "## Despliegue en K3s"
+            echo ""
+            printf '| Servicio | Imagen |\n|---|---|\n| `%s` | `ghcr.io/abigaildurand/%s:%s` |\n' "$SERVICIO" "$SERVICIO" "$TAG"
+            echo ""
+            echo "Rollout verificado y volúmenes de PostgreSQL conservados."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Cerrar 22/tcp (siempre)
+        if: always() && steps.abrir.outputs.abierta == 'true'
+        env:
+          IP: ${{ steps.ip.outputs.ip }}
+        run: |
+          aws ec2 revoke-security-group-ingress --group-id "$SG_ID" \
+            --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=${IP}/32}]" >/dev/null
+          echo "Regla temporal eliminada: 22/tcp desde ${IP}/32"
+
+      - name: Borrar la llave del runner (siempre)
+        if: always()
+        run: rm -f ~/.ssh/despliegue ~/.ssh/known_hosts_despliegue ~/.ssh/config

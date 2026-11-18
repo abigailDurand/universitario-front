@@ -67,7 +67,8 @@ Dockerfile              Build Node 24 → nginx-unprivileged:1.27-alpine, puerto
 - `servicio-actualizado.yml`: recibe el `repository_dispatch` (`servicio-actualizado`) que envían
   `uni-notas-api` y `uni-pendientes-api` tras publicar su imagen. Valida `servicio`, `imagen`,
   `tag` y `commit` y los muestra en el resumen de la ejecución (pestaña *Actions*).
-- El despliegue automático a K3s se conectará después del despliegue manual (`k8s/README.md`).
+- `desplegar.yml` (reutilizable): despliega un servicio en K3s por SSH con OIDC de AWS y regla temporal
+  en el SG; lo llaman `ci-publicar.yml` (uni-panel) y `servicio-actualizado.yml` (las API). Ver `k8s/README.md`.
 - El aviso lo envía cada API con su secret `PANEL_DISPATCH_TOKEN` (configurado en el repo de
   cada API, no aquí).
 

@@ -168,6 +168,46 @@ siguen ahí tras borrar los pods de ambas BD.
 Al reiniciar una BD, las API se recuperan solas pero con un corte breve (ver `TASKS.md`):
 `uni-notas-api` responde 500 una vez y `uni-pendientes-api` se reinicia (Kubernetes la levanta).
 
-## Pendiente
+## CD automático (GitHub Actions → K3s por SSH)
 
-- Conectar GitHub Actions al despliegue (después del despliegue manual).
+| Origen | Workflow | Despliega |
+|---|---|---|
+| Merge/push a `main` de `universitario-front` | `ci-publicar.yml` → pruebas → imagen → `desplegar.yml` | `uni-panel` |
+| Merge/push a `main` de `notas-service` / `pendientes-service` | su `ci-publicar-avisar.yml` publica y envía `servicio-actualizado` → `servicio-actualizado.yml` valida → `desplegar.yml` | solo ese servicio |
+
+Los pull requests solo ejecutan pruebas. `desplegar.yml` comprueba además que el evento sea
+`push` o `repository_dispatch` y la rama `main`.
+
+**Cómo entra a la EC2:**
+1. AWS por OIDC con el rol `vars.AWS_ROLE_ARN` (sin Access Keys). El rol solo lo puede asumir
+   `repo:abigailDurand/universitario-front:ref:refs/heads/main` y solo puede añadir/quitar
+   reglas del SG `vars.AWS_SG_ID` (`vars.AWS_REGION`).
+2. Abre `22/tcp` solo para la IP del runner (`/32`, descripción `gha-despliegue-temporal`) y la
+   cierra al final **aunque falle**. Al empezar borra reglas temporales que hayan quedado.
+3. SSH como usuario `despliegue` con la llave exclusiva `secrets.DEPLOY_SSH_KEY` (opción
+   `restrict` en `authorized_keys`) y `StrictHostKeyChecking yes` contra
+   `secrets.DEPLOY_KNOWN_HOSTS` (alias `unipanel-ec2`, independiente de la IP `vars.DEPLOY_HOST`).
+4. Copia `k8s/` de `main` y ejecuta `k8s/desplegar.sh <servicio> <tag>`:
+   - el servicio indicado recibe el tag nuevo; los otros conservan el tag que **ya corre en el
+     clúster** (el `newTag` de `kustomization.yaml` solo sirve para el primer despliegue manual);
+   - espera `rollout status`; si falla hace `rollout undo` y el job termina en error;
+   - compara nombre, UID y estado de los PVC antes y después: si cambian, falla. Nunca borra PVC.
+
+Un solo despliegue a la vez (`concurrency: despliegue-k3s`, los siguientes esperan).
+
+**Configuración necesaria** (en `universitario-front`):
+
+| Tipo | Nombre | Valor |
+|---|---|---|
+| Secret | `DEPLOY_SSH_KEY` | Llave privada ed25519 de despliegue (solo existe ahí) |
+| Secret | `DEPLOY_KNOWN_HOSTS` | `unipanel-ec2 ssh-ed25519 …` (clave pública del host de la EC2) |
+| Variable | `AWS_ROLE_ARN` | `arn:aws:iam::<cuenta>:role/unipanel-despliegue-sg` |
+| Variable | `AWS_REGION` | `us-east-1` |
+| Variable | `AWS_SG_ID` | ID del Security Group de la EC2 |
+| Variable | `DEPLOY_HOST` | IP pública actual de la EC2 (**actualizar si cambia**) |
+
+En la EC2: usuario `despliegue` con `~/.kube/config` (copia de `/etc/rancher/k3s/k3s.yaml`)
+y la clave pública de despliegue en `~/.ssh/authorized_keys`.
+
+Al terminar la demo: eliminar el rol, la política y el proveedor OIDC de IAM, y revocar los
+tokens de GitHub (`PANEL_DISPATCH_TOKEN` y el de GHCR).
