@@ -5,18 +5,21 @@ import { useState } from 'react'
 import App from '../src/App.jsx'
 import Modal from '../src/components/Modal.jsx'
 import { respuestaJson, simularFetch } from './fetch-simulado.js'
+import { USUARIO_A, guardarSesionDePrueba } from './sesion-prueba.js'
 
 describe('navegación', () => {
   it('abre Mis notas por defecto y alterna con Mis pendientes', async () => {
+    guardarSesionDePrueba()
     simularFetch({
+      'GET /api/auth/me': () => respuestaJson(USUARIO_A),
       'GET /api/notas/cursos': () => respuestaJson([]),
       'GET /api/pendientes': () => respuestaJson([]),
     })
     const usuario = userEvent.setup()
     render(<App />)
 
+    expect(await screen.findByRole('heading', { level: 1, name: 'Mis notas' })).toBeInTheDocument()
     expect(screen.getByText('UniPanel')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1, name: 'Mis notas' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Mis notas' })).toHaveAttribute('aria-current', 'page')
     expect(await screen.findByText('Aún no tienes cursos. Crea el primero.')).toBeInTheDocument()
 

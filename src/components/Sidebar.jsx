@@ -3,7 +3,7 @@ const SECCIONES = [
   { id: 'pendientes', etiqueta: 'Mis pendientes' },
 ]
 
-export default function Sidebar({ activa, onCambiar }) {
+export default function Sidebar({ activa, onCambiar, usuario, onCerrarSesion }) {
   return (
     <aside className="sidebar">
       <p className="sidebar__marca">UniPanel</p>
@@ -23,6 +23,14 @@ export default function Sidebar({ activa, onCambiar }) {
           ))}
         </ul>
       </nav>
+      {usuario && (
+        <div className="sidebar__usuario">
+          <p className="sidebar__nombre" title={usuario.email}>{usuario.nombre}</p>
+          <button type="button" className="boton boton--secundario sidebar__salir" onClick={onCerrarSesion}>
+            Cerrar sesión
+          </button>
+        </div>
+      )}
     </aside>
   )
 }

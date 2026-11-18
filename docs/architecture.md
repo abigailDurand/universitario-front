@@ -3,6 +3,7 @@
 ```
 Navegador ──► uni-panel (Nginx sin root, :8080)
                ├── /                     → React compilado (SPA, fallback a index.html)
+               ├── /api/auth[/...]       → uni-notas-api:5000      (ruta completa; registro, login, me)
                ├── /api/notas[/...]      → uni-notas-api:5000      (ruta completa)
                ├── /api/pendientes[/...] → uni-pendientes-api:3000 (ruta completa)
                └── /api/* (otras)        → 404
@@ -14,6 +15,20 @@ uni-pendientes-api ──► BD de pendientes (PostgreSQL)
 - Nginx reenvía la ruta **completa**, sin quitar el prefijo (`proxy_pass` sin URI final).
 - Los `/health` de las API **no** se publican (en Nginx, `/health` cae en la SPA).
 - Las API no se llaman entre sí y cada una es la única que accede a su BD.
+- **Autenticación** (`notas-service/AUTH.md`): `uni-notas-api` gestiona usuarios y firma JWT
+  EdDSA de 8 h con su **clave privada**; ambas API los validan con la **clave pública** y filtran
+  todo por el `usuario_id` del token. El navegador guarda el token en `sessionStorage` y lo envía
+  como `Authorization: Bearer`. `cursos.usuario_id` y `pendientes.usuario_id` no se relacionan
+  entre bases de datos.
+
+### Claves del token por entorno
+
+| Entorno | Clave privada (solo notas) | Clave pública (ambas API) |
+|---|---|---|
+| Docker Compose | Archivo `secretos/jwt-privada.pem` (ignorado por git) | `secretos/jwt-publica.pem` |
+| K3s | Secret `jwt-privada`, montado solo en `uni-notas-api` | Secret `jwt-publica`, montado en ambas API |
+
+Se generan una vez (`openssl genpkey -algorithm ed25519`) y nunca se guardan en el repo.
 
 ## Entornos
 

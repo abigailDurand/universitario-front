@@ -270,6 +270,39 @@ textarea { resize: vertical; }
 .modal__acciones { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem; }
 .confirmacion__texto { margin-bottom: 1rem; }
 
+/* ── Acceso (login / registro) ── */
+.acceso { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem 1rem; }
+.acceso__tarjeta {
+  width: 100%;
+  max-width: 420px;
+  padding: 2rem 1.75rem;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 16px;
+  box-shadow: var(--sombra);
+}
+.acceso__marca { font-size: 1.1rem; font-weight: 700; color: var(--primario); margin-bottom: 0.5rem; }
+.acceso__titulo { font-size: 1.6rem; margin-bottom: 1.25rem; }
+.acceso__enviar { width: 100%; justify-content: center; margin-top: 0.25rem; }
+.acceso__cambio { margin-top: 1rem; text-align: center; }
+.alerta--aviso { background: var(--durazno); color: var(--texto); border: 1px solid #f6cfb2; }
+.enlace {
+  border: 0;
+  background: none;
+  padding: 0.25rem;
+  color: var(--primario);
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.enlace:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Usuario en la barra lateral ── */
+.sidebar { display: flex; flex-direction: column; }
+.sidebar__usuario { margin-top: auto; padding-top: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.sidebar__nombre { padding: 0 0.5rem; font-weight: 600; overflow-wrap: anywhere; }
+.sidebar__salir { justify-content: center; }
+
 /* ── Móvil ── */
 @media (max-width: 768px) {
   .app { flex-direction: column; }
@@ -288,6 +321,10 @@ textarea { resize: vertical; }
   .sidebar__marca { margin: 0; padding: 0; font-size: 1.1rem; }
   .sidebar__lista { flex-direction: row; }
   .sidebar__enlace { padding: 0.4rem 0.65rem; white-space: nowrap; }
+  .sidebar { flex-direction: row; flex-wrap: wrap; }
+  .sidebar__usuario { margin: 0 0 0 auto; padding: 0; flex-direction: row; align-items: center; }
+  .sidebar__nombre { display: none; }
+  .sidebar__salir { padding: 0.4rem 0.65rem; }
   .contenido { padding: 1.25rem 1rem; }
   .pagina__titulo { font-size: 1.4rem; }
   .notas { grid-template-columns: minmax(0, 1fr); }
