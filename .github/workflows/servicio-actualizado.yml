@@ -1,0 +1,49 @@
+# Recibe el aviso que envían uni-notas-api y uni-pendientes-api tras publicar una imagen
+# (repository_dispatch, event_type: servicio-actualizado).
+# Por ahora valida el aviso y deja constancia en el resumen de la ejecución.
+# El despliegue a Kubernetes se añadirá aquí cuando se confirme el clúster.
+name: servicio-actualizado
+
+on:
+  repository_dispatch:
+    types: [servicio-actualizado]
+
+permissions:
+  contents: read
+
+jobs:
+  registrar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validar aviso y escribir resumen
+        # Los valores del payload se pasan por env (nunca interpolados en el script).
+        env:
+          SERVICIO: ${{ github.event.client_payload.servicio }}
+          IMAGEN: ${{ github.event.client_payload.imagen }}
+          TAG: ${{ github.event.client_payload.tag }}
+          COMMIT: ${{ github.event.client_payload.commit }}
+        run: |
+          errores=0
+          case "$SERVICIO" in
+            uni-notas-api|uni-pendientes-api) ;;
+            "") echo "::error::Falta client_payload.servicio"; errores=1 ;;
+            *) echo "::error::Servicio desconocido en client_payload.servicio (se esperaba uni-notas-api o uni-pendientes-api)"; errores=1 ;;
+          esac
+          [ -n "$IMAGEN" ] || { echo "::error::Falta client_payload.imagen"; errores=1; }
+          [ -n "$TAG" ]    || { echo "::error::Falta client_payload.tag"; errores=1; }
+          [ -n "$COMMIT" ] || { echo "::error::Falta client_payload.commit"; errores=1; }
+          [ "$errores" -eq 0 ] || exit 1
+
+          {
+            echo "## Servicio actualizado"
+            echo ""
+            echo "| Campo | Valor |"
+            echo "|---|---|"
+            printf '| Servicio | `%s` |\n' "$SERVICIO"
+            printf '| Imagen | `%s` |\n' "$IMAGEN"
+            printf '| Tag | `%s` |\n' "$TAG"
+            printf '| Commit | `%s` |\n' "$COMMIT"
+            echo ""
+            echo "_Despliegue a Kubernetes pendiente de confirmar el clúster._"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Aviso recibido: $SERVICIO -> $IMAGEN"

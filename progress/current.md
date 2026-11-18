@@ -11,7 +11,11 @@
   resumen (7.2 / 9.5 / `alcanzable`), `PATCH {}` → 400, pendiente con fecha `Z` → `-05:00`,
   `PATCH estado`, filtros combinados, filtro inválido → 400, DELETE 204. Datos de prueba
   borrados y `docker compose down -v --rmi local` (sin volúmenes ni imágenes locales).
-- `.env` local creado con contraseñas aleatorias (ignorado por git). Nada confirmado en git.
+- `.env` local creado con contraseñas aleatorias (ignorado por git). Subido a `github.com/abigailDurand/universitario-front` (privado); `.gitattributes` fija LF.
+
+- CI/CD: `ci-publicar.yml` (pruebas en PR; en push a `main` publica
+  `ghcr.io/abigaildurand/uni-panel:sha-<commit>`) y `servicio-actualizado.yml` (valida el aviso de
+  las API y lo muestra en el resumen de la ejecución). Sin despliegue todavía.
 
 ## Decisiones a confirmar
 
@@ -35,5 +39,6 @@
 
 ## Siguiente
 
-- Confirmar clúster y registro de imágenes para `k8s/` y workflows (tareas 9–10).
+- Confirmar el clúster para `k8s/` y el paso de despliegue (tareas 9–10). La imagen en GHCR es
+  privada: el clúster necesitará credenciales para descargarla.
 - Revisar el diseño cuando se compartan las imágenes de referencia.

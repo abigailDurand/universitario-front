@@ -51,4 +51,5 @@ Las API crean sus tablas al arrancar.
 | `test/` | Vitest + Testing Library (jsdom) con `fetch` simulado |
 | `nginx/` | `default.conf` (SPA + proxies) y `proxy-comun.inc` (cabeceras) |
 | `Dockerfile` | Build con Node 24 → `nginxinc/nginx-unprivileged:1.27-alpine` (uid 101, :8080) |
-| `k8s/`, `.github/workflows/` | Pendientes de confirmar clúster y registro |
+| `.github/workflows/` | `ci-publicar.yml` (pruebas + imagen en GHCR) y `servicio-actualizado.yml` (recibe el aviso de las API) |
+| `k8s/` | Pendiente de confirmar el clúster |

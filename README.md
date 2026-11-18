@@ -26,6 +26,17 @@ docker compose down         # -v borra también los datos
 Levanta `uni-panel`, `uni-notas-api`, `uni-pendientes-api` (desde `../notas-service` y
 `../pendientes-service`) y una PostgreSQL para cada API. Solo se publica `uni-panel`.
 
+## CI/CD (`.github/workflows/`)
+
+- `ci-publicar.yml`: en pull request hacia `main` ejecuta `./init.sh`; en push a `main`, si pasa,
+  publica `ghcr.io/abigaildurand/uni-panel:sha-<12 primeros del SHA>` con el `GITHUB_TOKEN`.
+- `servicio-actualizado.yml`: recibe el `repository_dispatch` (`servicio-actualizado`) que envían
+  `uni-notas-api` y `uni-pendientes-api` tras publicar su imagen. Valida `servicio`, `imagen`,
+  `tag` y `commit` y los muestra en el resumen de la ejecución (pestaña *Actions*).
+- El despliegue a Kubernetes se añadirá cuando se confirme el clúster.
+- El aviso lo envía cada API con su secret `PANEL_DISPATCH_TOKEN` (configurado en el repo de
+  cada API, no aquí).
+
 ## Verificación
 
 ```bash

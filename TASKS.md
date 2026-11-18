@@ -7,10 +7,11 @@ Referencia: `docs/spec.md`, `docs/architecture.md` y los SPEC de cada API.
 
 - _Ninguna._
 
-## En espera (requiere confirmar clúster y registro de imágenes)
+## En espera (requiere confirmar el clúster)
 
 - [ ] 9. Manifiestos Kubernetes en `k8s/` (los tres servicios y sus BD; secretos fuera del repo).
-- [ ] 10. Workflows en `.github/workflows/` (build, push de imágenes y despliegue).
+- [ ] 10. Despliegue en los workflows (parcial: CI, publicación en GHCR y recepción del aviso
+      `servicio-actualizado` hechos; falta el despliegue a Kubernetes).
 
 ## Por definir (requiere decisión del usuario)
 

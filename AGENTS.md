@@ -37,7 +37,7 @@ nginx/                  default.conf (SPA + proxies, :8080) y proxy-comun.inc
 docker-compose.yml      Integración local de los 3 servicios y sus BD
 docs/                   spec.md, architecture.md
 k8s/                    Manifiestos (pendientes; ver k8s/README.md)
-.github/workflows/      CI/CD (pendiente)
+.github/workflows/      ci-publicar.yml (pruebas + GHCR), servicio-actualizado.yml (aviso de las API)
 Dockerfile              Build Node 24 → nginx-unprivileged:1.27-alpine, puerto 8080
 ```
 
@@ -60,6 +60,17 @@ Dockerfile              Build Node 24 → nginx-unprivileged:1.27-alpine, puerto
   `PENDIENTES_DB_PASSWORD` y opcional `UNI_PANEL_PORT`. Los usa `docker-compose.yml`.
 - `NOTAS_API_URL`, `PENDIENTES_API_URL`: destinos del proxy de Vite (opcionales).
 
+## CI/CD (`.github/workflows/`)
+
+- `ci-publicar.yml`: en pull request hacia `main` ejecuta `./init.sh`; en push a `main`, si pasa,
+  publica `ghcr.io/abigaildurand/uni-panel:sha-<12 primeros del SHA>` con el `GITHUB_TOKEN`.
+- `servicio-actualizado.yml`: recibe el `repository_dispatch` (`servicio-actualizado`) que envían
+  `uni-notas-api` y `uni-pendientes-api` tras publicar su imagen. Valida `servicio`, `imagen`,
+  `tag` y `commit` y los muestra en el resumen de la ejecución (pestaña *Actions*).
+- El despliegue a Kubernetes se añadirá cuando se confirme el clúster.
+- El aviso lo envía cada API con su secret `PANEL_DISPATCH_TOKEN` (configurado en el repo de
+  cada API, no aquí).
+
 ## Reglas esenciales
 
 - Un solo agente implementa y verifica.
@@ -71,6 +82,6 @@ Dockerfile              Build Node 24 → nginx-unprivileged:1.27-alpine, puerto
 - No dejes archivos temporales ni código de depuración.
 - **Credenciales:** si creas alguna, informa al usuario el valor y dónde quedó; en el repo
   solo se documenta la ubicación y el nombre de la variable.
-- No generes manifiestos, workflows ni secretos ficticios: esperan la confirmación del
-  clúster y del registro de imágenes.
+- No generes manifiestos, pasos de despliegue ni secretos ficticios: esperan la confirmación
+  del clúster (el registro GHCR ya está confirmado).
 - Si algo no está definido, pregunta en vez de suponer.
