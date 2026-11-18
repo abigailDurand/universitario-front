@@ -6,3 +6,6 @@ dist/
 secretos/
 *.pem
 *.log
+
+# Grabaciones originales (pesadas); en el repo solo va docs/demo.mp4 comprimido
+*.mkv

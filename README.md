@@ -4,6 +4,13 @@ Front React (Vite) servido por Nginx sin root en el puerto 8080. Pantallas *Mis 
 (`uni-notas-api`) y *Mis pendientes* (`uni-pendientes-api`). El navegador solo habla con
 Nginx, que reenvía `/api/notas` y `/api/pendientes` con la ruta completa. Ver `docs/`.
 
+## Demo en video
+
+[![Demo de UniPanel desplegado en K3s (EC2): haz clic para ver el video](docs/demo-portada.jpg)](docs/demo.mp4)
+
+▶️ [Ver el video de la demo (`docs/demo.mp4`, 6 min)](docs/demo.mp4): UniPanel desplegado en K3s
+sobre EC2, con *Mis notas* y *Mis pendientes*.
+
 ## Desarrollo
 
 ```bash
