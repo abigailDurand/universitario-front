@@ -137,7 +137,8 @@ guarda el token, lo envía y reacciona a los `401`.
   Vite hace lo mismo en desarrollo.
 - Nginx añade `Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self';
   img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`
-  (por confirmar tras probar el build).
+  (confirmada: el build de Vite no usa scripts ni estilos en línea). También `X-Content-Type-Options:
+  nosniff` y `Referrer-Policy: no-referrer`.
 - Claves del token (Secrets de K3s y archivos de Compose): ver `docs/architecture.md`.
 
 ### Pruebas

@@ -19,7 +19,7 @@ Internet ──► EC2 :80 ──► Traefik (K3s) ──► Ingress uni-panel �
 | `kustomization.yaml` | Namespace `unipanel`, lista de recursos y **tags de imagen** desplegados |
 | `namespace.yaml` | Namespace `unipanel` |
 | `notas-db.yaml`, `pendientes-db.yaml` | Service headless + StatefulSet `postgres:17-alpine` con PVC `local-path` de 1Gi |
-| `notas-api.yaml`, `pendientes-api.yaml` | Service + Deployment; espera a su BD (initContainer) y sondas en `/health` |
+| `notas-api.yaml`, `pendientes-api.yaml` | Service + Deployment (`strategy: Recreate`); espera a su BD (initContainer), sondas en `/health` y claves del token montadas en `/secretos/jwt` |
 | `panel.yaml` | Service + Deployment de Nginx (:8080) + Ingress de Traefik en `/` |
 
 **Secrets** (se crean a mano, nunca se guardan en el repo):
@@ -29,6 +29,11 @@ Internet ──► EC2 :80 ──► Traefik (K3s) ──► Ingress uni-panel �
 | `notas-db` | generic | `password` | Contraseña de la BD de notas (la usan su PostgreSQL y su API) |
 | `pendientes-db` | generic | `password` | Contraseña de la BD de pendientes |
 | `ghcr-credenciales` | docker-registry | — | Descargar las imágenes privadas de `ghcr.io/abigaildurand` |
+| `jwt-privada` | generic | `privada.pem` | Clave **privada** Ed25519 que firma los tokens. Montada **solo** en `uni-notas-api` (modo 0440, grupo 10001) |
+| `jwt-publica` | generic | `publica.pem` | Clave pública que valida los tokens. Montada en ambas API (modo 0444) |
+
+`JWT_KID` es un valor normal en los manifiestos (`unipanel-1`); no es secreto. Contrato del
+token: `notas-service/AUTH.md`.
 
 Las contraseñas deben ser solo letras y números (van dentro de `DATABASE_URL`).
 
@@ -90,6 +95,19 @@ kubectl -n unipanel create secret docker-registry ghcr-credenciales \
 unset GHCR_TOKEN
 ```
 
+Claves del token (una sola vez, en la EC2; la privada nunca sale del clúster):
+
+```bash
+umask 077 && mkdir -p ~/jwt && cd ~/jwt
+openssl genpkey -algorithm ed25519 -out privada.pem
+openssl pkey -in privada.pem -pubout -out publica.pem
+kubectl -n unipanel create secret generic jwt-privada --from-file=privada.pem=privada.pem
+kubectl -n unipanel create secret generic jwt-publica --from-file=publica.pem=publica.pem
+shred -u privada.pem 2>/dev/null || rm -f privada.pem    # la copia queda solo en el Secret
+```
+
+Rotar la clave (crear Secrets nuevos y reiniciar ambas API) invalida todas las sesiones.
+
 Las contraseñas de las BD quedan solo en los Secrets del clúster. Para verlas:
 `kubectl -n unipanel get secret notas-db -o jsonpath='{.data.password}' | base64 -d`.
 **No borres esos Secrets** mientras quieras conservar los datos: PostgreSQL fija la
@@ -143,6 +161,14 @@ kubectl -n unipanel scale statefulset uni-notas-db --replicas=0
 kubectl -n unipanel delete pvc datos-uni-notas-db-0
 kubectl apply -k ~/k8s && kubectl -n unipanel scale statefulset uni-notas-db --replicas=1
 ```
+
+## Estrategia `Recreate` de las API
+
+Las dos API aplican migraciones de esquema al arrancar, así que usan `strategy: Recreate`
+(el pod viejo se detiene antes de crear el nuevo; hay un corte breve en cada despliegue de
+una API). `kubectl apply` no puede pasar de `RollingUpdate` a `Recreate` en un Deployment que
+ya existe (queda el campo `rollingUpdate` que guardó el clúster), por eso `desplegar.sh` lo
+cambia una vez con `kubectl patch` antes de aplicar; ese cambio no reinicia pods.
 
 ## Diagnóstico
 

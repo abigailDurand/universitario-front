@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       proxy: {
+        '/api/auth': env.NOTAS_API_URL || 'http://127.0.0.1:5000',
         '/api/notas': env.NOTAS_API_URL || 'http://127.0.0.1:5000',
         '/api/pendientes': env.PENDIENTES_API_URL || 'http://127.0.0.1:3000',
       },

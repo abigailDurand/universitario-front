@@ -38,7 +38,23 @@
   - Problemas resueltos por el camino: `sub` OIDC inmutable con IDs numéricos en la política de
     confianza, y política de permisos sin adjuntar al rol.
 
+- Tareas 13–17 (autenticación, 18-11-2026): sesión en `sessionStorage`, `Authorization: Bearer`,
+  pantallas Iniciar sesión / Crear cuenta, Cerrar sesión, `/api/auth` en Nginx y Vite, CSP,
+  claves en Compose (`secretos/`) y K3s (Secrets `jwt-privada` / `jwt-publica`), API con
+  `strategy: Recreate`. `./init.sh` verde (49 pruebas Vitest).
+  - Punta a punta con Compose (imágenes locales de los tres repos) y con dos usuarios: 0 fallos
+    (sin token 401, aislamiento 404 en ver/editar/eliminar, datos de A intactos, CSP, `/health`
+    no publicado). La BD local del esquema antiguo migró sola: su curso previo quedó sin dueño e
+    invisible (respaldo en el scratchpad de la sesión). Luego `docker compose down -v`.
+  - Mismo script contra un K3s local: manifiestos anteriores (RollingUpdate, sin claves) →
+    `desplegar.sh` con los nuevos: paso a Recreate, claves montadas y legibles, 0 fallos.
+
 ## Decisiones a confirmar
+
+- Auth en el front: login muestra *Entrando…*; registro *Guardando…*. Validación mínima en el
+  cliente (email con `@`, contraseña 8–128 en registro); el resto lo decide la API.
+- `desplegar.sh` cambia una vez RollingUpdate → Recreate con `kubectl patch` (kustomize descarta
+  `rollingUpdate: null`).
 
 - CD: los tags vivos están en el clúster, no en el repo (`newTag` de `kustomization.yaml` solo
   para el primer despliegue manual). Usuario `despliegue` con kubeconfig de administrador de K3s
@@ -70,5 +86,7 @@
 ## Siguiente
 
 - Si cambia la IP de la EC2: actualizar la variable `DEPLOY_HOST`. Al terminar la demo: borrar rol/política/OIDC de IAM y revocar los tokens de GitHub.
+- Desplegar la autenticación (tarea 18): crear en la EC2 los Secrets `jwt-privada` y
+  `jwt-publica` **antes** de hacer push; luego push de este repo y de ambas API.
 - Decidir las mejoras de reconexión a BD de ambas API (ver `TASKS.md`).
 - Revisar el diseño cuando se compartan las imágenes de referencia.

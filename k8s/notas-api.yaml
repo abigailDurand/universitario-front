@@ -22,6 +22,9 @@ metadata:
     app.kubernetes.io/name: uni-notas-api
 spec:
   replicas: 1
+  # Recreate: el pod viejo no convive con el nuevo mientras este aplica migraciones.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: uni-notas-api
@@ -35,6 +38,8 @@ spec:
       securityContext:
         appArmorProfile:
           type: Unconfined
+        # La clave privada se monta con modo 0440 y grupo 10001 para que la lea el usuario de la imagen.
+        fsGroup: 10001
       imagePullSecrets:
         - name: ghcr-credenciales
       initContainers:
@@ -56,6 +61,20 @@ spec:
                   key: password
             - name: DATABASE_URL
               value: postgresql+psycopg://notas:$(NOTAS_DB_PASSWORD)@uni-notas-db:5432/notas
+            # Token común (notas-service/AUTH.md): esta API firma (privada) y valida (pública).
+            - name: JWT_PRIVATE_KEY_FILE
+              value: /secretos/jwt/privada/privada.pem
+            - name: JWT_PUBLIC_KEY_FILE
+              value: /secretos/jwt/publica/publica.pem
+            - name: JWT_KID
+              value: unipanel-1
+          volumeMounts:
+            - name: jwt-privada
+              mountPath: /secretos/jwt/privada
+              readOnly: true
+            - name: jwt-publica
+              mountPath: /secretos/jwt/publica
+              readOnly: true
           securityContext:
             runAsNonRoot: true
             runAsUser: 10001
@@ -70,4 +89,20 @@ spec:
             periodSeconds: 10
           resources:
             requests: { cpu: 50m, memory: 128Mi }
-            limits: { memory: 256Mi }
+            limits: { memory: 384Mi }
+      volumes:
+        # Secrets creados a mano (k8s/README.md); nunca en el repo.
+        - name: jwt-privada
+          secret:
+            secretName: jwt-privada
+            defaultMode: 0440
+            items:
+              - key: privada.pem
+                path: privada.pem
+        - name: jwt-publica
+          secret:
+            secretName: jwt-publica
+            defaultMode: 0444
+            items:
+              - key: publica.pem
+                path: publica.pem

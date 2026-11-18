@@ -61,6 +61,17 @@ rm -rf "$OVERLAY"; mkdir -p "$OVERLAY"
   done
 } > "$OVERLAY/kustomization.yaml"
 
+# Las API pasan de RollingUpdate a Recreate (no deben convivir dos versiones durante una
+# migración). `kubectl apply` no puede quitar el `rollingUpdate` que guardó el clúster, así
+# que se cambia aquí una sola vez; no reinicia pods.
+for s in uni-notas-api uni-pendientes-api; do
+  actual=$(kubectl -n "$NS" get deploy "$s" -o jsonpath='{.spec.strategy.type}' 2>/dev/null || true)
+  if [ "$actual" = "RollingUpdate" ]; then
+    log "$s: estrategia RollingUpdate → Recreate"
+    kubectl -n "$NS" patch deploy "$s" --type=json       -p='[{"op":"remove","path":"/spec/strategy/rollingUpdate"},{"op":"replace","path":"/spec/strategy/type","value":"Recreate"}]'
+  fi
+done
+
 ANTERIOR=$(tag_actual "$SERVICIO")
 log "Aplicando manifiestos (${SERVICIO}: ${ANTERIOR:-sin desplegar} → ${TAG})"
 kubectl apply -k "$OVERLAY"

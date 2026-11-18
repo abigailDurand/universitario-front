@@ -26,7 +26,10 @@ uni-pendientes-api ──► BD de pendientes (PostgreSQL)
 | Entorno | Clave privada (solo notas) | Clave pública (ambas API) |
 |---|---|---|
 | Docker Compose | Archivo `secretos/jwt-privada.pem` (ignorado por git) | `secretos/jwt-publica.pem` |
-| K3s | Secret `jwt-privada`, montado solo en `uni-notas-api` | Secret `jwt-publica`, montado en ambas API |
+| K3s | Secret `jwt-privada` (clave `privada.pem`), solo en `uni-notas-api`, en `/secretos/jwt/privada/` | Secret `jwt-publica` (clave `publica.pem`), en ambas API, en `/secretos/jwt/publica/` |
+
+`JWT_KID`: `.env` en Compose; `unipanel-1` en los manifiestos. Las API usan `strategy: Recreate`
+en K3s porque migran el esquema al arrancar.
 
 Se generan una vez (`openssl genpkey -algorithm ed25519`) y nunca se guardan en el repo.
 

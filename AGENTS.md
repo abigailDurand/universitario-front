@@ -21,7 +21,9 @@
 
 ```
 src/
-  api/http.js           fetch común; errores { "error" } → ApiError; 204 sin JSON
+  api/http.js           fetch común; Authorization: Bearer; 401/sesión vencida → cierre; 204 sin JSON
+  api/sesion.js         sessionStorage `unipanel.sesion` { token, expira } (no valida firmas)
+  api/auth.js           Registro, login y /me de uni-notas-api (/api/auth)
   api/notas.js          Endpoints de uni-notas-api (/api/notas)
   api/pendientes.js     Endpoints de uni-pendientes-api (/api/pendientes)
   utils/numeros.js      Lectura de notas, nota objetivo y peso
@@ -29,12 +31,12 @@ src/
   components/           Sidebar, Modal, ConfirmDialog, StatusMessage, Campo, Iconos
   components/notas/     CursoFormModal, EvaluacionFormModal, ResumenCurso
   components/pendientes PendienteFormModal
-  pages/                NotasPage.jsx, PendientesPage.jsx
-  App.jsx               Alterna pantallas (sin librería de rutas)
+  pages/                AccesoPage.jsx (Iniciar sesión / Crear cuenta), NotasPage.jsx, PendientesPage.jsx
+  App.jsx               Sesión (acceso ↔ pantallas) y alterna pantallas (sin librería de rutas)
   main.jsx, index.css   Arranque y estilos (paleta en :root)
 test/                   Vitest + Testing Library (fetch simulado solo en pruebas)
-nginx/                  default.conf (SPA + proxies, :8080) y proxy-comun.inc
-docker-compose.yml      Integración local de los 3 servicios y sus BD
+nginx/                  default.conf (SPA, CSP, proxies /api/auth, /api/notas, /api/pendientes, :8080)
+docker-compose.yml      Integración local de los 3 servicios y sus BD (claves en secretos/, ignorado)
 docs/                   spec.md, architecture.md
 k8s/                    Manifiestos de K3s con Kustomize (guía de despliegue: k8s/README.md)
 .github/workflows/      ci-publicar.yml (pruebas + GHCR), servicio-actualizado.yml (aviso de las API)
@@ -57,7 +59,10 @@ Dockerfile              Build Node 24 → nginx-unprivileged:1.27-alpine, puerto
 ### Variables y credenciales (solo ubicación, nunca valores)
 
 - `.env` (ignorado por git; plantilla `.env.example`): `NOTAS_DB_PASSWORD`,
-  `PENDIENTES_DB_PASSWORD` y opcional `UNI_PANEL_PORT`. Los usa `docker-compose.yml`.
+  `PENDIENTES_DB_PASSWORD`, `JWT_KID` y opcional `UNI_PANEL_PORT`. Los usa `docker-compose.yml`.
+- `secretos/jwt-privada.pem` y `secretos/jwt-publica.pem` (ignorados por git): claves Ed25519 del
+  token para Compose. Se generan con `openssl genpkey -algorithm ed25519` y `openssl pkey -pubout`
+  (ver `docker-compose.yml`). En K3s: Secrets `jwt-privada` / `jwt-publica` (`k8s/README.md`).
 - `NOTAS_API_URL`, `PENDIENTES_API_URL`: destinos del proxy de Vite (opcionales).
 
 ## CI/CD (`.github/workflows/`)

@@ -1,5 +1,9 @@
 # Integración local de UniPanel: uni-panel + uni-notas-api + uni-pendientes-api + sus BD.
-# Las contraseñas salen de `.env` (ignorado por git; plantilla en `.env.example`).
+# Las contraseñas y JWT_KID salen de `.env` (ignorado por git; plantilla en `.env.example`).
+# Claves del token (notas-service/AUTH.md) en `secretos/` (ignorado por git):
+#   mkdir -p secretos
+#   openssl genpkey -algorithm ed25519 -out secretos/jwt-privada.pem
+#   openssl pkey -in secretos/jwt-privada.pem -pubout -out secretos/jwt-publica.pem
 # Solo se publica uni-panel en 127.0.0.1:8080. Las API y las BD quedan en la red interna.
 #   docker compose up -d --build
 #   docker compose down        (añade -v para borrar también los datos)
@@ -39,6 +43,13 @@ services:
     build: ../notas-service
     environment:
       DATABASE_URL: postgresql+psycopg://notas:${NOTAS_DB_PASSWORD}@uni-notas-db:5432/notas
+      JWT_PRIVATE_KEY_FILE: /secretos/jwt/privada.pem
+      JWT_PUBLIC_KEY_FILE: /secretos/jwt/publica.pem
+      JWT_KID: ${JWT_KID:?Define JWT_KID en .env}
+    volumes:
+      # Solo uni-notas-api recibe la clave privada.
+      - ./secretos/jwt-privada.pem:/secretos/jwt/privada.pem:ro
+      - ./secretos/jwt-publica.pem:/secretos/jwt/publica.pem:ro
     depends_on:
       uni-notas-db:
         condition: service_healthy
@@ -52,6 +63,10 @@ services:
     build: ../pendientes-service
     environment:
       DATABASE_URL: postgresql://pendientes:${PENDIENTES_DB_PASSWORD}@uni-pendientes-db:5432/pendientes
+      JWT_PUBLIC_KEY_FILE: /secretos/jwt/publica.pem
+      JWT_KID: ${JWT_KID:?Define JWT_KID en .env}
+    volumes:
+      - ./secretos/jwt-publica.pem:/secretos/jwt/publica.pem:ro
     depends_on:
       uni-pendientes-db:
         condition: service_healthy

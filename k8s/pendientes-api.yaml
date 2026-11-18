@@ -22,6 +22,9 @@ metadata:
     app.kubernetes.io/name: uni-pendientes-api
 spec:
   replicas: 1
+  # Recreate: el pod viejo no convive con el nuevo mientras este migra el esquema.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: uni-pendientes-api
@@ -56,6 +59,15 @@ spec:
                   key: password
             - name: DATABASE_URL
               value: postgresql://pendientes:$(PENDIENTES_DB_PASSWORD)@uni-pendientes-db:5432/pendientes
+            # Token común (notas-service/AUTH.md): esta API solo valida, con la clave pública.
+            - name: JWT_PUBLIC_KEY_FILE
+              value: /secretos/jwt/publica/publica.pem
+            - name: JWT_KID
+              value: unipanel-1
+          volumeMounts:
+            - name: jwt-publica
+              mountPath: /secretos/jwt/publica
+              readOnly: true
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
@@ -71,3 +83,12 @@ spec:
           resources:
             requests: { cpu: 50m, memory: 96Mi }
             limits: { memory: 192Mi }
+      volumes:
+        # Secret creado a mano (k8s/README.md). Esta API nunca recibe la clave privada.
+        - name: jwt-publica
+          secret:
+            secretName: jwt-publica
+            defaultMode: 0444
+            items:
+              - key: publica.pem
+                path: publica.pem

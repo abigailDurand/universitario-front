@@ -5,17 +5,17 @@ Referencia: `docs/spec.md`, `docs/architecture.md` y los SPEC de cada API.
 
 ## Pendientes
 
-Esperan a que las API implementen la autenticación (notas 13–16, pendientes 9–12).
+Las API ya implementaron la autenticación (notas 13–16, pendientes 9–12; commits locales).
 
 - [x] 13. Sesión (spec §9, `notas-service/AUTH.md`): `sessionStorage` `unipanel.sesion`,
       `Authorization: Bearer` en `src/api/http.js`, `401` o `exp` pasado → login, `GET /api/auth/me`
       al cargar.
 - [x] 14. Pantallas *Iniciar sesión* y *Crear cuenta* (registro + login automático); nombre del
       usuario y *Cerrar sesión* en la barra lateral; al cerrar sesión se descarta todo el estado.
-- [ ] 15. Nginx y Vite: `/api/auth` → `uni-notas-api` con ruta completa; cabecera CSP.
-- [ ] 16. Claves del token: generación documentada, archivos para Compose (ignorados) y Secrets
+- [x] 15. Nginx y Vite: `/api/auth` → `uni-notas-api` con ruta completa; cabecera CSP.
+- [x] 16. Claves del token: generación documentada, archivos para Compose (ignorados) y Secrets
       `jwt-privada` / `jwt-publica` en K3s montados según `docs/architecture.md`.
-- [ ] 17. Pruebas: Vitest de sesión y formularios; punta a punta con dos usuarios en Compose y en K3s.
+- [x] 17. Pruebas: Vitest de sesión y formularios; punta a punta con dos usuarios en Compose y en K3s.
 - [ ] 18. Migración en la EC2: ejecutar `asignar-propietario` en ambas API con un propietario
       explícito **si** hay datos previos (hoy las BD de la demo están vacías).
 

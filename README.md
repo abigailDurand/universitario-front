@@ -17,7 +17,10 @@ Destinos del proxy configurables con `NOTAS_API_URL` y `PENDIENTES_API_URL`.
 ## Integración local (Docker Compose)
 
 ```bash
-cp .env.example .env        # completa las contraseñas (solo letras y números)
+cp .env.example .env        # completa las contraseñas (solo letras y números) y JWT_KID
+mkdir -p secretos           # claves del token (ignoradas por git)
+openssl genpkey -algorithm ed25519 -out secretos/jwt-privada.pem
+openssl pkey -in secretos/jwt-privada.pem -pubout -out secretos/jwt-publica.pem
 docker compose up -d --build
 # http://127.0.0.1:8080
 docker compose down         # -v borra también los datos
@@ -25,6 +28,7 @@ docker compose down         # -v borra también los datos
 
 Levanta `uni-panel`, `uni-notas-api`, `uni-pendientes-api` (desde `../notas-service` y
 `../pendientes-service`) y una PostgreSQL para cada API. Solo se publica `uni-panel`.
+Al abrir la app pide **iniciar sesión o crear una cuenta**; cada estudiante ve solo sus datos.
 
 ## CI/CD (`.github/workflows/`)
 
