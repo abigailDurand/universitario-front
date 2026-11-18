@@ -1,0 +1,28 @@
+# UniPanel en K3s (un nodo). Aplicar con:  kubectl apply -k k8s/
+# Los Secrets NO están aquí: se crean a mano (ver k8s/README.md).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: unipanel
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: unipanel
+
+resources:
+  - namespace.yaml
+  - notas-db.yaml
+  - pendientes-db.yaml
+  - notas-api.yaml
+  - pendientes-api.yaml
+  - panel.yaml
+
+# Versiones desplegadas (tags publicados por GitHub Actions: sha-<12 primeros del commit>).
+# Para actualizar: kustomize edit set image ...  o editar newTag y volver a aplicar.
+images:
+  - name: ghcr.io/abigaildurand/uni-notas-api
+    newTag: sha-9e41e442450a
+  - name: ghcr.io/abigaildurand/uni-pendientes-api
+    newTag: sha-4851f6ed2e87
+  - name: ghcr.io/abigaildurand/uni-panel
+    newTag: sha-331ae1dba308

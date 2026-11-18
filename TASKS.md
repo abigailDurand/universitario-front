@@ -7,11 +7,21 @@ Referencia: `docs/spec.md`, `docs/architecture.md` y los SPEC de cada API.
 
 - _Ninguna._
 
-## En espera (requiere confirmar el clúster)
+## En curso
 
-- [ ] 9. Manifiestos Kubernetes en `k8s/` (los tres servicios y sus BD; secretos fuera del repo).
+- [ ] 12. Despliegue manual en K3s (un nodo, EC2) siguiendo `k8s/README.md` (lo hace el usuario).
+
+## En espera (después del despliegue manual)
+
 - [ ] 10. Despliegue en los workflows (parcial: CI, publicación en GHCR y recepción del aviso
-      `servicio-actualizado` hechos; falta el despliegue a Kubernetes).
+      `servicio-actualizado` hechos; falta aplicar el tag nuevo en K3s).
+
+## Mejoras detectadas en otros repos (no se tocan desde aquí; decidir el usuario)
+
+- `notas-service`: tras reiniciar su BD responde **500 una vez** (conexión rota en el pool de
+  SQLAlchemy). Propuesta: `pool_pre_ping=True` en el engine.
+- `pendientes-service`: tras reiniciar su BD **el proceso se cae** (error no manejado del pool de
+  `pg`) y Kubernetes lo reinicia (~30 s de 502). Propuesta: `pool.on('error', ...)` que solo registre.
 
 ## Por definir (requiere decisión del usuario)
 
@@ -31,4 +41,6 @@ Referencia: `docs/spec.md`, `docs/architecture.md` y los SPEC de cada API.
 - [x] 6. Mis pendientes: filtros combinables, tabla, `vencido` y fechas en hora de Perú.
 - [x] 7. Mis pendientes: crear, editar (solo cambios), completar/reabrir y eliminar con confirmación.
 - [x] 8. Integración local con Docker Compose (3 servicios + 2 PostgreSQL), probada punta a punta.
+- [x] 9. Manifiestos de K3s en `k8s/` (namespace, 2 PostgreSQL con PVC `local-path`, 2 API,
+      panel e Ingress de Traefik; Secrets creados a mano). Probados en K3s v1.32.2 en contenedor.
 - [x] 11. Nginx sin root (`nginx-unprivileged:1.27-alpine`) en el puerto 8080.

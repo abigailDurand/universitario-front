@@ -33,7 +33,7 @@ Levanta `uni-panel`, `uni-notas-api`, `uni-pendientes-api` (desde `../notas-serv
 - `servicio-actualizado.yml`: recibe el `repository_dispatch` (`servicio-actualizado`) que envían
   `uni-notas-api` y `uni-pendientes-api` tras publicar su imagen. Valida `servicio`, `imagen`,
   `tag` y `commit` y los muestra en el resumen de la ejecución (pestaña *Actions*).
-- El despliegue a Kubernetes se añadirá cuando se confirme el clúster.
+- Despliegue en K3s (EC2): manual por ahora, ver `k8s/README.md`; luego se conectará a Actions.
 - El aviso lo envía cada API con su secret `PANEL_DISPATCH_TOKEN` (configurado en el repo de
   cada API, no aquí).
 

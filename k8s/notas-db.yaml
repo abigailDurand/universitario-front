@@ -1,0 +1,77 @@
+# PostgreSQL de uni-notas-api (BD de notas). Solo accesible dentro del clúster.
+# Contraseña: Secret `notas-db` (clave `password`), creado a mano.
+# Datos: PVC de 1Gi en la StorageClass `local-path` de K3s (disco del nodo EC2).
+apiVersion: v1
+kind: Service
+metadata:
+  name: uni-notas-db
+  labels:
+    app.kubernetes.io/name: uni-notas-db
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: uni-notas-db
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: uni-notas-db
+  labels:
+    app.kubernetes.io/name: uni-notas-db
+spec:
+  serviceName: uni-notas-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: uni-notas-db
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: uni-notas-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: notas
+            - name: POSTGRES_USER
+              value: notas
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: notas-db
+                  key: password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: datos
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "notas", "-d", "notas", "-h", "127.0.0.1"]
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "notas", "-d", "notas", "-h", "127.0.0.1"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 256Mi }
+  volumeClaimTemplates:
+    - metadata:
+        name: datos
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 1Gi

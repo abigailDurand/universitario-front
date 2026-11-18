@@ -1,0 +1,68 @@
+# uni-pendientes-api (Express, puerto 3000). El nombre del Service lo usa Nginx.
+# DATABASE_URL se arma con la contraseña del Secret `pendientes-db` (solo letras y números).
+apiVersion: v1
+kind: Service
+metadata:
+  name: uni-pendientes-api
+  labels:
+    app.kubernetes.io/name: uni-pendientes-api
+spec:
+  selector:
+    app.kubernetes.io/name: uni-pendientes-api
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: uni-pendientes-api
+  labels:
+    app.kubernetes.io/name: uni-pendientes-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: uni-pendientes-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: uni-pendientes-api
+    spec:
+      imagePullSecrets:
+        - name: ghcr-credenciales
+      initContainers:
+        # Espera a su BD: la API aplica su esquema al arrancar.
+        - name: esperar-bd
+          image: postgres:17-alpine
+          command: ["sh", "-c", "until pg_isready -h uni-pendientes-db -p 5432 -U pendientes; do sleep 2; done"]
+      containers:
+        - name: api
+          image: ghcr.io/abigaildurand/uni-pendientes-api
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: PENDIENTES_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pendientes-db
+                  key: password
+            - name: DATABASE_URL
+              value: postgresql://pendientes:$(PENDIENTES_DB_PASSWORD)@uni-pendientes-db:5432/pendientes
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+          # /health es interno: lo consulta Kubernetes, Nginx no lo publica.
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 96Mi }
+            limits: { memory: 192Mi }

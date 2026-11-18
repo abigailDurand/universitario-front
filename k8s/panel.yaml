@@ -1,0 +1,74 @@
+# uni-panel (Nginx sin root, puerto 8080): sirve React y reenvía /api/notas y /api/pendientes.
+# Se expone con el Ingress de Traefik que trae K3s: Traefik escucha en el puerto 80 del
+# nodo (ServiceLB de K3s, sin balanceador de AWS), así que la app queda en http://<IP pública>/.
+apiVersion: v1
+kind: Service
+metadata:
+  name: uni-panel
+  labels:
+    app.kubernetes.io/name: uni-panel
+spec:
+  selector:
+    app.kubernetes.io/name: uni-panel
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: uni-panel
+  labels:
+    app.kubernetes.io/name: uni-panel
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: uni-panel
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: uni-panel
+    spec:
+      imagePullSecrets:
+        - name: ghcr-credenciales
+      containers:
+        - name: nginx
+          image: ghcr.io/abigaildurand/uni-panel
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 101
+            allowPrivilegeEscalation: false
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 20m, memory: 32Mi }
+            limits: { memory: 64Mi }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: uni-panel
+  labels:
+    app.kubernetes.io/name: uni-panel
+spec:
+  ingressClassName: traefik
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: uni-panel
+                port:
+                  name: http

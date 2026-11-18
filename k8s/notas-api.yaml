@@ -1,0 +1,68 @@
+# uni-notas-api (Flask + gunicorn, puerto 5000). El nombre del Service lo usa Nginx.
+# DATABASE_URL se arma con la contraseña del Secret `notas-db` (solo letras y números).
+apiVersion: v1
+kind: Service
+metadata:
+  name: uni-notas-api
+  labels:
+    app.kubernetes.io/name: uni-notas-api
+spec:
+  selector:
+    app.kubernetes.io/name: uni-notas-api
+  ports:
+    - name: http
+      port: 5000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: uni-notas-api
+  labels:
+    app.kubernetes.io/name: uni-notas-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: uni-notas-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: uni-notas-api
+    spec:
+      imagePullSecrets:
+        - name: ghcr-credenciales
+      initContainers:
+        # Espera a su BD: la API crea las tablas al arrancar.
+        - name: esperar-bd
+          image: postgres:17-alpine
+          command: ["sh", "-c", "until pg_isready -h uni-notas-db -p 5432 -U notas; do sleep 2; done"]
+      containers:
+        - name: api
+          image: ghcr.io/abigaildurand/uni-notas-api
+          ports:
+            - name: http
+              containerPort: 5000
+          env:
+            - name: NOTAS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: notas-db
+                  key: password
+            - name: DATABASE_URL
+              value: postgresql+psycopg://notas:$(NOTAS_DB_PASSWORD)@uni-notas-db:5432/notas
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            allowPrivilegeEscalation: false
+          # /health es interno: lo consulta Kubernetes, Nginx no lo publica.
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 256Mi }

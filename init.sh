@@ -40,5 +40,13 @@ if npm run --silent build >/dev/null; then ok "vite build"; else fail "vite buil
 rm -rf dist
 
 echo ""
+echo "── Manifiestos k8s ──"
+if command -v kubectl >/dev/null 2>&1; then
+  if kubectl kustomize k8s >/dev/null; then ok "kubectl kustomize k8s"; else fail "kubectl kustomize k8s"; EXIT_CODE=1; fi
+else
+  ok "kubectl no instalado: se omite la validación de k8s/"
+fi
+
+echo ""
 if [ $EXIT_CODE -eq 0 ]; then ok "Listo"; else fail "Hay errores"; fi
 exit $EXIT_CODE

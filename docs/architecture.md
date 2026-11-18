@@ -52,4 +52,4 @@ Las API crean sus tablas al arrancar.
 | `nginx/` | `default.conf` (SPA + proxies) y `proxy-comun.inc` (cabeceras) |
 | `Dockerfile` | Build con Node 24 → `nginxinc/nginx-unprivileged:1.27-alpine` (uid 101, :8080) |
 | `.github/workflows/` | `ci-publicar.yml` (pruebas + imagen en GHCR) y `servicio-actualizado.yml` (recibe el aviso de las API) |
-| `k8s/` | Pendiente de confirmar el clúster |
+| `k8s/` | Manifiestos de K3s (Kustomize): 2 PostgreSQL con PVC, 2 API, panel e Ingress de Traefik; guía en `k8s/README.md` |
