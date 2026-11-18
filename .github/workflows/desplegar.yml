@@ -54,6 +54,15 @@ jobs:
         with:
           ref: main
 
+      - name: Identidad OIDC (para la política de confianza de AWS)
+        # Muestra solo los datos de identidad del token (nunca el token).
+        run: |
+          token=$(curl -fsS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" | jq -r .value)
+          carga=$(printf '%s' "$token" | cut -d. -f2 | tr '_-' '/+')
+          while [ $(( ${#carga} % 4 )) -ne 0 ]; do carga="${carga}="; done
+          printf '%s' "$carga" | base64 -d | jq '{sub, aud, iss, repository, ref, event_name, job_workflow_ref}'
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}

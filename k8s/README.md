@@ -179,9 +179,13 @@ Los pull requests solo ejecutan pruebas. `desplegar.yml` comprueba además que e
 `push` o `repository_dispatch` y la rama `main`.
 
 **Cómo entra a la EC2:**
-1. AWS por OIDC con el rol `vars.AWS_ROLE_ARN` (sin Access Keys). El rol solo lo puede asumir
-   `repo:abigailDurand/universitario-front:ref:refs/heads/main` y solo puede añadir/quitar
-   reglas del SG `vars.AWS_SG_ID` (`vars.AWS_REGION`).
+1. AWS por OIDC con el rol `vars.AWS_ROLE_ARN` (sin Access Keys). El rol solo puede añadir/quitar
+   reglas del SG `vars.AWS_SG_ID` (`vars.AWS_REGION`) y solo lo puede asumir `main` de este repo.
+   **Ojo:** el repo emite el `sub` en formato inmutable (con IDs numéricos), así que la política
+   de confianza debe usar exactamente
+   `repo:abigailDurand@127162244/universitario-front@1462113526:ref:refs/heads/main`
+   (se consulta con `gh api repos/abigailDurand/universitario-front/actions/oidc/customization/sub`).
+   Con el formato antiguo sin IDs, AWS responde `Not authorized to perform sts:AssumeRoleWithWebIdentity`.
 2. Abre `22/tcp` solo para la IP del runner (`/32`, descripción `gha-despliegue-temporal`) y la
    cierra al final **aunque falle**. Al empezar borra reglas temporales que hayan quedado.
 3. SSH como usuario `despliegue` con la llave exclusiva `secrets.DEPLOY_SSH_KEY` (opción
