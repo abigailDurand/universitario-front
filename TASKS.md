@@ -9,7 +9,7 @@ Referencia: `docs/spec.md`, `docs/architecture.md` y los SPEC de cada API.
 
 ## En curso
 
-- [ ] 12. Despliegue manual en K3s (un nodo, EC2) siguiendo `k8s/README.md` (lo hace el usuario).
+- _Ninguna._
 
 ## En espera (después del despliegue manual)
 
@@ -43,4 +43,7 @@ Referencia: `docs/spec.md`, `docs/architecture.md` y los SPEC de cada API.
 - [x] 8. Integración local con Docker Compose (3 servicios + 2 PostgreSQL), probada punta a punta.
 - [x] 9. Manifiestos de K3s en `k8s/` (namespace, 2 PostgreSQL con PVC `local-path`, 2 API,
       panel e Ingress de Traefik; Secrets creados a mano). Probados en K3s v1.32.2 en contenedor.
+- [x] 12. Despliegue manual en K3s en EC2 (t3.small, Ubuntu 26.04): funcionando por la IP pública.
+      Ajustes necesarios: PostgreSQL como uid 70 (sin gosu), `startupProbe` en las BD y
+      `appArmorProfile: Unconfined` en los pods (AppArmor de Ubuntu 26.04 bloquea señales).
 - [x] 11. Nginx sin root (`nginx-unprivileged:1.27-alpine`) en el puerto 8080.

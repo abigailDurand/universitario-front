@@ -22,6 +22,14 @@
   acceso por el puerto 80 de Traefik, resumen 7.2 / 9.5, y datos conservados tras reiniciar
   ambas BD. Clúster de prueba eliminado.
 
+- Tarea 12: desplegado en EC2 (t3.small, Ubuntu 26.04, K3s v1.37.2), probado por la IP pública.
+  - t3.micro no alcanzaba (1 GB): se cambió a t3.small y se añadió swap de 2 GB.
+  - AppArmor `cri-containerd.apparmor.d` bloquea señales entre procesos del contenedor:
+    pods con `appArmorProfile: Unconfined`; PostgreSQL como uid 70 (sin gosu); `startupProbe`
+    de 3 min en las BD. Volúmenes de las BD reiniciados dos veces (sin datos de usuario).
+  - Secrets en el clúster: `notas-db`, `pendientes-db` (generados en la EC2) y
+    `ghcr-credenciales` (creado por el usuario).
+
 ## Decisiones a confirmar
 
 - K3s: Secrets `notas-db`, `pendientes-db` (contraseña hex) y `ghcr-credenciales` creados a
@@ -49,6 +57,6 @@
 
 ## Siguiente
 
-- Despliegue manual en la EC2 con `k8s/README.md` (tarea 12); después, conectar Actions (tarea 10).
+- Conectar GitHub Actions al despliegue en K3s (tarea 10). La IP pública cambia al detener/iniciar la EC2 (Elastic IP si se quiere fija).
 - Decidir las mejoras de reconexión a BD de ambas API (ver `TASKS.md`).
 - Revisar el diseño cuando se compartan las imágenes de referencia.

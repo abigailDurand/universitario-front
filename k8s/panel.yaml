@@ -31,6 +31,11 @@ spec:
       labels:
         app.kubernetes.io/name: uni-panel
     spec:
+      # Ubuntu 26.04 (EC2): el perfil AppArmor cri-containerd bloquea las señales entre procesos
+      # del mismo contenedor (PostgreSQL, gunicorn, Nginx, runtime de Go). Ver k8s/README.md.
+      securityContext:
+        appArmorProfile:
+          type: Unconfined
       imagePullSecrets:
         - name: ghcr-credenciales
       containers:

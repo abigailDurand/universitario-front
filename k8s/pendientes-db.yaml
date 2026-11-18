@@ -33,9 +33,22 @@ spec:
       labels:
         app.kubernetes.io/name: uni-pendientes-db
     spec:
+      # Arranca directamente como el usuario postgres (uid 70 en la imagen alpine): así el
+      # entrypoint no usa gosu, que se cuelga en el kernel de Ubuntu 26.04 de la EC2.
+      # Ubuntu 26.04 (EC2): el perfil AppArmor cri-containerd bloquea las señales entre procesos
+      # del mismo contenedor (PostgreSQL, gunicorn, Nginx, runtime de Go). Ver k8s/README.md.
+      securityContext:
+        appArmorProfile:
+          type: Unconfined
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
       containers:
         - name: postgres
           image: postgres:17-alpine
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
           ports:
             - name: postgres
               containerPort: 5432
@@ -54,6 +67,13 @@ spec:
           volumeMounts:
             - name: datos
               mountPath: /var/lib/postgresql/data
+          # El primer arranque (initdb) puede tardar en un disco EBS pequeño: hasta 3 min antes
+          # de que la sonda de vida empiece a contar.
+          startupProbe:
+            exec:
+              command: ["pg_isready", "-U", "pendientes", "-d", "pendientes", "-h", "127.0.0.1"]
+            periodSeconds: 5
+            failureThreshold: 36
           readinessProbe:
             exec:
               command: ["pg_isready", "-U", "pendientes", "-d", "pendientes", "-h", "127.0.0.1"]
@@ -61,8 +81,9 @@ spec:
           livenessProbe:
             exec:
               command: ["pg_isready", "-U", "pendientes", "-d", "pendientes", "-h", "127.0.0.1"]
-            initialDelaySeconds: 30
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
           resources:
             requests: { cpu: 50m, memory: 128Mi }
             limits: { memory: 256Mi }

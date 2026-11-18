@@ -36,8 +36,8 @@ Las contraseñas deben ser solo letras y números (van dentro de `DATABASE_URL`)
 
 ### 1. Instancia EC2
 
-- Ubuntu Server 24.04 LTS, **t3.small como mínimo** (2 GB de RAM; t3.medium va más holgada),
-  disco gp3 de 20 GB.
+- Ubuntu Server (probado en 26.04 LTS), **t3.small como mínimo** (2 GB de RAM), disco gp3 de
+  20 GB o más. **Una t3.micro (1 GB) no alcanza**: K3s se cae y las BD no terminan de arrancar.
 - Security group de entrada:
   - `22/tcp` solo desde tu IP (SSH).
   - `80/tcp` desde `0.0.0.0/0` (o solo desde las IP que verán la demo).
@@ -47,11 +47,22 @@ Las contraseñas deben ser solo letras y números (van dentro de `DATABASE_URL`)
 
 ### 2. Instalar K3s
 
+Conéctate con `ssh -i <llave>.pem ubuntu@<IP pública>` (en Windows la llave debe ser legible
+solo por tu usuario: `icacls <llave>.pem /inheritance:r` y `/grant:r "$env:USERNAME:R"`).
+
 ```bash
 curl -sfL https://get.k3s.io | sh -
 sudo k3s kubectl get nodes            # debe salir Ready
-mkdir -p ~/.kube && sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config && sudo chown "$USER" ~/.kube/config
+
+# kubectl sin sudo (el kubectl de K3s necesita KUBECONFIG apuntando a la copia del usuario)
+mkdir -p ~/.kube && sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config && sudo chown "$USER" ~/.kube/config && chmod 600 ~/.kube/config
+echo 'export KUBECONFIG=$HOME/.kube/config' >> ~/.bashrc && export KUBECONFIG=$HOME/.kube/config
 kubectl get storageclass               # debe existir local-path (default)
+
+# Swap de 2 GB como colchón de memoria (K3s la admite sin cambios)
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+echo 'vm.swappiness=10' | sudo tee /etc/sysctl.d/99-swappiness.conf && sudo sysctl --system
 ```
 
 K3s ya incluye Traefik (Ingress), ServiceLB y la StorageClass `local-path`.
@@ -113,6 +124,26 @@ kubectl apply -k ~/k8s
   `kubectl -n unipanel exec uni-notas-db-0 -- pg_dump -U notas notas > notas.sql`
   (ídem con `uni-pendientes-db-0`, usuario y BD `pendientes`).
 
+## AppArmor en Ubuntu 26.04 (por qué los pods llevan `appArmorProfile: Unconfined`)
+
+En la EC2 con Ubuntu 26.04 (kernel 7.0), el perfil AppArmor `cri-containerd.apparmor.d` de
+containerd **bloquea las señales entre procesos del mismo contenedor**
+(`dmesg`: `apparmor="DENIED" operation="signal" ... peer="cri-containerd.apparmor.d//&unconfined"`).
+Consecuencias observadas: `gosu` (entrypoint de PostgreSQL) se queda al 100 % de CPU,
+PostgreSQL falla con `could not signal for checkpoint: Permission denied`, y Nginx/gunicorn
+se reinician. Por eso los cinco pods declaran `securityContext.appArmorProfile: Unconfined`.
+El resto de protecciones se mantiene (usuario sin root, sin escalada de privilegios), y
+PostgreSQL corre directamente como `postgres` (uid 70), sin `gosu`.
+
+Si una BD quedó a medio inicializar (por ejemplo, tras matarla durante el primer arranque),
+y **todavía no tiene datos**, se reinicia limpia así (borra sus datos):
+
+```bash
+kubectl -n unipanel scale statefulset uni-notas-db --replicas=0
+kubectl -n unipanel delete pvc datos-uni-notas-db-0
+kubectl apply -k ~/k8s && kubectl -n unipanel scale statefulset uni-notas-db --replicas=1
+```
+
 ## Diagnóstico
 
 ```bash
@@ -124,6 +155,10 @@ kubectl -n unipanel logs deploy/uni-panel
 ```
 
 ## Verificación hecha
+
+**EC2 t3.small, Ubuntu 26.04, K3s v1.37.2** (18-11-2026): los cinco pods `Running`, acceso por
+`http://<IP pública>/`, resumen 7.2 / 9.5 / `alcanzable`, fecha `Z` → `-05:00`, cambio de
+estado de un pendiente y `DELETE` 204. Antes se probó también en:
 
 Probado en K3s v1.32.2 (contenedor `rancher/k3s`) con las mismas imágenes:
 todos los pods `Running`, PVC `Bound`, front y API por el puerto 80 de Traefik,
