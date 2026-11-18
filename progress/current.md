@@ -58,7 +58,7 @@
 
 - CD: los tags vivos están en el clúster, no en el repo (`newTag` de `kustomization.yaml` solo
   para el primer despliegue manual). Usuario `despliegue` con kubeconfig de administrador de K3s
-  (demo). El puerto 22 queda abierto solo a la IP del usuario (`IP-del-usuario/32`).
+  (demo). El puerto 22 queda abierto solo a la IP del usuario (`/32`, configurada en el Security Group; no se documenta aquí).
 
 - K3s: Secrets `notas-db`, `pendientes-db` (contraseña hex) y `ghcr-credenciales` creados a
   mano; PVC de 1Gi por BD; requests/limits pequeños para t3.small; initContainer que espera a
